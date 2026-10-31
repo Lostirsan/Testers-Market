@@ -135,7 +135,14 @@ export async function saveGame(_: ActionState, formData: FormData): Promise<Acti
 export async function createCampaign(_: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
   const gameId = str(formData, "game_id");
+  let questions: unknown = [];
+  try {
+    questions = JSON.parse(str(formData, "questions") || "[]");
+  } catch {
+    return { error: "Couldn't read the control questions." };
+  }
   const { error } = await supabase.rpc("create_campaign", {
+    p_questions: questions,
     p_game: gameId,
     p_instructions: str(formData, "instructions"),
     p_min_minutes: int(formData, "min_minutes"),
@@ -179,6 +186,10 @@ export async function submitReport(_: ActionState, formData: FormData): Promise<
   const id = str(formData, "assignment_id");
   const body = str(formData, "body");
   if (body.length < 150) return { error: `Your report is too short (${body.length}/150 characters).` };
+  const expected = int(formData, "quiz_count") || 0;
+  for (let i = 0; i < expected; i++) {
+    if (formData.get(`answer_${i}`) === null) return { error: "Answer all control questions." };
+  }
   const files = formData.getAll("screenshots").filter((f): f is File => f instanceof File && f.size > 0);
   if (files.length === 0) return { error: friendlyError("screenshot_required") };
   if (files.length > 5) return { error: "Attach at most 5 screenshots." };
@@ -190,15 +201,24 @@ export async function submitReport(_: ActionState, formData: FormData): Promise<
   } catch (e) {
     return { error: (e as Error).message };
   }
-  const { error } = await supabase.rpc("submit_report", {
+  const answers = [0, 1, 2]
+    .map((i) => formData.get(`answer_${i}`))
+    .filter((v) => v !== null)
+    .map((v) => Number.parseInt(String(v), 10));
+  const { data: result, error } = await supabase.rpc("submit_report", {
     p_assignment: id,
     p_body: body,
     p_bugs: url(str(formData, "bugs")),
     p_rating: int(formData, "rating"),
     p_media: media,
+    p_answers: answers,
   });
   if (error) return { error: friendlyError(error.message) };
   revalidatePath(`/tests/${id}`);
+  if (result === "wrong_answers") {
+    return { error: "Some answers to the control questions are wrong. You have one attempt left." };
+  }
+  if (result === "slot_lost") redirect(`/tests/${id}`);
   return { ok: "Report sent. The developer has 72 hours to review it." };
 }
 

@@ -55,6 +55,7 @@ export interface Assignment {
   review_deadline_at: string | null;
   decided_at: string | null;
   dispute_deadline_at: string | null;
+  quiz_attempts: number;
 }
 
 export interface Report {

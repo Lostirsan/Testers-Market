@@ -116,6 +116,27 @@ select public.process_timeouts();
 set role authenticated;
 select pg_temp.check((select balance = 30 from public.wallet()), 'carol auto-accepted +10');
 
+
+-- Control questions
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.expect_error($$select public.create_campaign((select id from games where title='Space Dash'),
+  'Play three levels and tell me what you think', 10, 10, 2, '[{"question":"Boss color?","options":["Red"],"correct":0}]')$$, 'bad_questions');
+select public.create_campaign((select id from games where title='Space Dash'),
+  'Play three levels and tell me what you think', 10, 10, 2,
+  '[{"question":"What color is the final boss?","options":["Red","Blue","Green"],"correct":1}]');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.check((select count(*) = 0 from public.campaign_questions), 'tester cannot read answers');
+select public.take_slot((select id from test_campaigns where status='active' and owner_id='00000000-0000-0000-0000-00000000000b'));
+select pg_temp.check((select count(*) = 1 from public.get_quiz((select id from test_assignments where tester_id=auth.uid() and status='taken'))), 'quiz visible without answers');
+select pg_temp.check(public.submit_report((select id from test_assignments where tester_id=auth.uid() and status='taken'),
+  repeat('I played everything and really liked the music overall. ', 4), null, 4, array['https://x/q.png'], array[0]) = 'wrong_answers', 'first wrong attempt');
+select pg_temp.check(public.submit_report((select id from test_assignments where tester_id=auth.uid() and status='taken'),
+  repeat('I played everything and really liked the music overall. ', 4), null, 4, array['https://x/q.png'], array[2]) = 'slot_lost', 'second wrong attempt loses slot');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select public.take_slot((select id from test_campaigns where status='active' and owner_id='00000000-0000-0000-0000-00000000000b'));
+select pg_temp.check(public.submit_report((select id from test_assignments where tester_id=auth.uid() and status='taken'),
+  repeat('The final boss fight is tough but fair, loved the dash. ', 4), null, 5, array['https://x/a.png'], array[1]) = 'submitted', 'correct answers submit');
+
 -- Global invariant: total points = minted (tasks + admin + purchases) - burned
 reset role;
 select pg_temp.check(

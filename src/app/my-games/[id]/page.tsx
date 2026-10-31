@@ -6,6 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/ActionForm";
 import { Card, Empty, Field, Points, StatusBadge, inputClass, timeLeft } from "@/components/ui";
 import { CostPreview } from "./CostPreview";
 import { ReviewForm } from "./ReviewForm";
+import { QuestionsEditor } from "./QuestionsEditor";
 import type { Assignment, Campaign, Game, Profile, Report } from "@/lib/types";
 
 type Row = Assignment & { test_reports: Report | null; profiles: Pick<Profile, "username"> };
@@ -25,6 +26,11 @@ export default async function ManageGamePage({ params }: PageProps<"/my-games/[i
     .order("taken_at", { ascending: false })
     .returns<Row[]>();
   const wallet = await getWallet();
+  const { data: questions } = active
+    ? await supabase.from("campaign_questions").select("position, question, options, correct")
+        .eq("campaign_id", active.id).order("position")
+        .returns<{ position: number; question: string; options: string[]; correct: number }[]>()
+    : { data: null };
   const toReview = (assignments ?? []).filter((a) => a.status === "submitted");
   const others = (assignments ?? []).filter((a) => a.status !== "submitted");
 
@@ -50,6 +56,13 @@ export default async function ManageGamePage({ params }: PageProps<"/my-games/[i
                 {active.min_minutes} min
               </p>
             </div>
+            {!!questions?.length && (
+              <ul className="w-full space-y-1 text-sm text-zinc-600">
+                {questions.map((q) => (
+                  <li key={q.position}>Q{q.position + 1}: {q.question} → <strong>{q.options[q.correct]}</strong></li>
+                ))}
+              </ul>
+            )}
             <ActionForm action={closeCampaign}>
               <input type="hidden" name="campaign_id" value={active.id} />
               <SubmitButton variant="secondary">Close and refund unused points</SubmitButton>
@@ -69,6 +82,7 @@ export default async function ManageGamePage({ params }: PageProps<"/my-games/[i
               <textarea name="instructions" required minLength={20} rows={4} className={inputClass} />
             </Field>
             <CostPreview spendable={wallet?.spendable ?? 0} />
+            <QuestionsEditor />
             <SubmitButton>List for testing</SubmitButton>
           </ActionForm>
         </Card>

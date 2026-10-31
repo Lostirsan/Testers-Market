@@ -30,6 +30,7 @@ const MESSAGES: Record<string, string> = {
   forbidden: "You don't have permission to do that.",
   conflict_of_interest: "You can't resolve a dispute you are part of.",
   not_found: "Not found.",
+  bad_questions: "Check your control questions.",
 };
 
 export function friendlyError(message: string | undefined | null): string {

@@ -17,6 +17,10 @@ export default async function TestPage({ params }: PageProps<"/tests/[id]">) {
   if (!a) notFound();
   const c = a.test_campaigns;
   const g = c.games;
+  type QuizItem = { qpos: number; question: string; options: string[] };
+  const quiz: QuizItem[] | null = a.status === "taken"
+    ? ((await supabase.rpc("get_quiz", { p_assignment: a.id })).data as QuizItem[] | null)
+    : null;
   const canDispute = a.status === "rejected" && a.dispute_deadline_at && new Date(a.dispute_deadline_at) > new Date();
 
   return (
@@ -45,6 +49,25 @@ export default async function TestPage({ params }: PageProps<"/tests/[id]">) {
                   {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} / 5</option>)}
                 </select>
               </Field>
+              {!!quiz?.length && (
+                <fieldset className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <legend className="px-1 text-sm font-medium">Control questions from the developer</legend>
+                  <p className="text-xs text-zinc-600">
+                    All answers must be correct. Attempts left: {2 - a.quiz_attempts}. If you run out, you lose this slot.
+                  </p>
+                  <input type="hidden" name="quiz_count" value={quiz.length} />
+                  {quiz.map((q) => (
+                    <div key={q.qpos}>
+                      <p className="text-sm font-medium">{q.question}</p>
+                      {q.options.map((o, k) => (
+                        <label key={k} className="mt-1 flex items-center gap-2 text-sm">
+                          <input type="radio" name={`answer_${q.qpos}`} value={k} required /> {o}
+                        </label>
+                      ))}
+                    </div>
+                  ))}
+                </fieldset>
+              )}
               <Field label="Screenshots" hint="1 to 5 images, up to 5 MB each.">
                 <input name="screenshots" type="file" multiple required accept="image/png,image/jpeg,image/webp,image/gif" className="text-sm" />
               </Field>
