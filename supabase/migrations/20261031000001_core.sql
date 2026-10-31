@@ -574,6 +574,14 @@ create or replace view public.author_stats with (security_invoker = false) as
   left join public.test_assignments a on a.author_id = p.id
   group by p.id;
 
+-- Occupied slots per campaign, public (assignment rows themselves are private).
+create or replace view public.campaign_slots with (security_invoker = false) as
+  select c.id as campaign_id,
+         count(a.id) filter (where a.status in ('taken', 'submitted', 'accepted', 'rejected', 'disputed')) as occupied
+  from public.test_campaigns c
+  left join public.test_assignments a on a.campaign_id = c.id
+  group by c.id;
+
 -- ---------------------------------------------------------------------------
 -- Row level security
 -- ---------------------------------------------------------------------------
@@ -636,7 +644,7 @@ grant execute on function
   public.admin_adjust(uuid, int, text), public.set_ban(uuid, boolean), public.is_staff(uuid)
   to authenticated;
 grant execute on function public.econ(text), public.is_staff(uuid) to anon;
-grant select on public.tester_stats, public.author_stats to anon, authenticated;
+grant select on public.tester_stats, public.author_stats, public.campaign_slots to anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Seed: starter tasks (total 60 points)

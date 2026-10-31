@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Testers Market
 
-## Getting Started
+Indie developers test each other's games for points. Earn points by testing and doing tasks,
+spend them to get your own game tested.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router, server actions) · Supabase (Postgres, Auth, Storage) ·
+Cloudflare Workers via OpenNext · Tailwind CSS 4. Everything runs on free tiers.
+
+## How the point economy works
+
+- Users start with 0 points. Starter tasks give up to 60 points, locked until the user's first
+  test of someone else's game is accepted.
+- Listing a game holds `(reward + 10% fee) × testers` in escrow. Each accepted report pays the
+  tester and burns the fee. Closing a campaign refunds unused slots.
+- Unreviewed reports are auto-accepted after 72 h. Rejections need a reason and can be disputed
+  for 72 h; a moderator decides.
+- All point movements are rows in `ledger_entries`; balance is their sum. Clients can't write the
+  ledger: every change goes through `SECURITY DEFINER` functions in
+  `supabase/migrations/20261031000001_core.sql`. Tunable numbers live in `public.econ()`.
+
+## Local development
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in your Supabase project URL and anon key
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Database tests (plain Postgres 15+ with `psql`, `createdb` on PATH):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run test:db
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Setting up Supabase
 
-## Learn More
+1. Create a free project (region close to your users, e.g. Frankfurt).
+2. SQL Editor: run the files in `supabase/migrations/` in order
+   (or `npx supabase link` then `npx supabase db push`).
+3. Authentication > URL Configuration: set Site URL to your domain and add
+   `https://YOUR-DOMAIN/auth/callback` to Redirect URLs.
+4. Authentication > Providers: enable Discord and GitHub (and Google if you like). Each provider's
+   OAuth app uses `https://YOUR-PROJECT.supabase.co/auth/v1/callback` as its callback URL.
+5. Make yourself admin: `update profiles set role = 'admin' where username = 'you';`
 
-To learn more about Next.js, take a look at the following resources:
+## Deploying to Cloudflare Workers
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Connect the repository in Cloudflare (Workers & Pages > Create > Import a repository) with:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Build command: `npx opennextjs-cloudflare build`
+- Deploy command: `npx opennextjs-cloudflare deploy`
+- Build variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`
 
-## Deploy on Vercel
+Or from your machine: `npx wrangler login && npm run deploy`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project layout
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/app/actions.ts          all server actions (forms call these)
+src/app/...                 pages: games, my-games, tests, tasks, wallet, admin, ...
+src/lib/                    Supabase clients, auth helpers, types, error messages
+src/proxy.ts                session refresh + private route guard
+supabase/migrations/        schema, economy functions, RLS, cron, storage
+supabase/tests/             economy test on plain Postgres
+```
