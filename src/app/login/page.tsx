@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
     <div className="mx-auto max-w-sm">
       <Card>
-        <h1 className="text-xl font-bold">Sign in to Testers Market</h1>
+        <h1 className="text-xl font-bold">Sign in to Test Traders</h1>
         <p className="mt-1 text-sm text-zinc-600">New here? Signing in creates your account.</p>
         {typeof sp.error === "string" && <p className="mt-3 text-sm text-red-600">Sign-in failed: {sp.error}</p>}
         <div className="mt-5 space-y-2">

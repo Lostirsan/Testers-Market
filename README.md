@@ -1,4 +1,4 @@
-# Testers Market
+# Test Traders
 
 Indie developers test each other's games for points. Earn points by testing and doing tasks,
 spend them to get your own game tested.

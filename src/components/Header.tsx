@@ -8,7 +8,7 @@ export async function Header() {
     <header className="border-b border-zinc-200 bg-white">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
         <Link href="/" className="text-lg font-bold text-zinc-900">
-          Testers<span className="text-violet-600">Market</span>
+          Test<span className="text-violet-600">Traders</span>
         </Link>
         <nav className="flex flex-1 items-center gap-4 text-sm text-zinc-700">
           <Link href="/games" className="hover:text-violet-700">Find games to test</Link>
